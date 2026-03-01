@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Line, TransformControls } from '@react-three/drei';
 import { CameraViz } from './components/CameraViz';
 import { BasketballCourt, BaseballField } from './components/Scenes';
-import { Box, RotateCcw, Layers, Map, Menu, X, ChevronDown, ChevronUp, Move, RotateCw, Scaling, Download, Upload, Eye } from 'lucide-react';
+import { Box, RotateCcw, Layers, Map, Menu, X, ChevronDown, ChevronUp, Move, RotateCw, Scaling, Download, Upload, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from './lib/utils';
 import * as THREE from 'three';
 
@@ -1327,6 +1327,51 @@ export default function GaussianSplattingGuide() {
             <Environment preset="city" />
           </Canvas>
           
+          {/* Preview Mode Controls */}
+          {isPreviewMode && activeCamera && (
+            <div className="absolute top-4 right-4 p-4 bg-black/80 backdrop-blur-md border border-white/10 rounded-lg z-50 flex flex-col items-center gap-2 min-w-[200px]">
+              <div className="flex items-center justify-between w-full">
+                <button
+                  onClick={() => {
+                    const currentId = activeCamera.id;
+                    const prevId = (currentId - 1 + cameras.length) % cameras.length;
+                    setActiveObject(`camera-${prevId}`);
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-full text-white transition-colors"
+                  title="Previous Camera"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                <div className="text-center">
+                  <div className="text-sm font-bold text-[#F27D26]">Camera {activeCamera.id + 1}</div>
+                  <div className="text-[10px] text-gray-500 font-mono">
+                    {activeCamera.id + 1} / {cameras.length}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const currentId = activeCamera.id;
+                    const nextId = (currentId + 1) % cameras.length;
+                    setActiveObject(`camera-${nextId}`);
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-full text-white transition-colors"
+                  title="Next Camera"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="w-full h-px bg-white/10 my-1" />
+              
+              <div className="flex justify-between w-full text-[10px] font-mono text-gray-400">
+                <span>FOV: {Math.round(activeCamera.fov)}°</span>
+                <span>Focal: {Math.round(fovToFocalLength(activeCamera.fov))}mm</span>
+              </div>
+            </div>
+          )}
+
           {/* Overlay Legend */}
           <div className="absolute bottom-6 right-6 p-4 bg-black/80 backdrop-blur-md border border-white/10 rounded-lg max-w-xs hidden md:block">
             <h4 className="text-xs font-mono text-gray-400 uppercase mb-2">图例</h4>
