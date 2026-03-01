@@ -188,6 +188,10 @@ const NumberControl = ({ label, value, setValue, min, max, step, unit }: NumberC
   );
 };
 
+import { ExportMapModal } from './components/ExportMapModal';
+
+// ... existing imports
+
 interface SidebarProps {
   setup: CameraSetup;
   setSetup: (setup: CameraSetup) => void;
@@ -197,9 +201,10 @@ interface SidebarProps {
   setCameraOverrides: (overrides: CameraOverrides) => void;
   activeObject: ActiveObject;
   setActiveObject: (obj: ActiveObject) => void;
+  onExportMap: () => void;
 }
 
-const Sidebar = ({ setup, setSetup, setIsSidebarOpen, cameraCount, cameraOverrides, setCameraOverrides, activeObject, setActiveObject }: SidebarProps) => {
+const Sidebar = ({ setup, setSetup, setIsSidebarOpen, cameraCount, cameraOverrides, setCameraOverrides, activeObject, setActiveObject, onExportMap }: SidebarProps) => {
   const activeCameraId = activeObject?.startsWith('camera-') ? parseInt(activeObject.split('-')[1]) : null;
   const activeCameraOverride = activeCameraId !== null ? cameraOverrides[activeCameraId] || {} : null;
 
@@ -209,6 +214,7 @@ const Sidebar = ({ setup, setSetup, setIsSidebarOpen, cameraCount, cameraOverrid
       cameraOverrides,
       version: 1,
       timestamp: new Date().toISOString(),
+      // ...
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -258,19 +264,28 @@ const Sidebar = ({ setup, setSetup, setIsSidebarOpen, cameraCount, cameraOverrid
     </div>
 
     {/* Import/Export Actions */}
-    <div className="px-6 py-4 border-b border-[#333] flex gap-2">
+    <div className="px-6 py-4 border-b border-[#333] flex flex-col gap-2">
+      <div className="flex gap-2">
+        <button
+          onClick={handleExport}
+          className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-[#333] text-gray-300 text-xs font-mono uppercase rounded transition-colors"
+        >
+          <Download className="w-3 h-3" />
+          导出配置
+        </button>
+        <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-[#333] text-gray-300 text-xs font-mono uppercase rounded transition-colors cursor-pointer">
+          <Upload className="w-3 h-3" />
+          导入配置
+          <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+        </label>
+      </div>
       <button
-        onClick={handleExport}
-        className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-[#333] text-gray-300 text-xs font-mono uppercase rounded transition-colors"
+        onClick={onExportMap}
+        className="w-full flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-[#333] text-gray-300 text-xs font-mono uppercase rounded transition-colors"
       >
-        <Download className="w-3 h-3" />
-        导出配置
+        <Map className="w-3 h-3" />
+        导出平面示意图
       </button>
-      <label className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#222] hover:bg-[#333] text-gray-300 text-xs font-mono uppercase rounded transition-colors cursor-pointer">
-        <Upload className="w-3 h-3" />
-        导入配置
-        <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-      </label>
     </div>
 
     <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -784,6 +799,7 @@ export default function GaussianSplattingGuide() {
   const [transformMode, setTransformMode] = useState<TransformMode>('translate');
   const [activeObject, setActiveObject] = useState<ActiveObject>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isExportMapOpen, setIsExportMapOpen] = useState(false);
   const orbitRef = useRef<any>(null);
   const subjectRef = useRef<THREE.Mesh>(null);
   const trackRef = useRef<THREE.Group>(null);
@@ -1038,6 +1054,7 @@ export default function GaussianSplattingGuide() {
           setCameraOverrides={setCameraOverrides}
           activeObject={activeObject}
           setActiveObject={setActiveObject}
+          onExportMap={() => setIsExportMapOpen(true)}
         />
       </div>
 
@@ -1055,10 +1072,18 @@ export default function GaussianSplattingGuide() {
               setCameraOverrides={setCameraOverrides}
               activeObject={activeObject}
               setActiveObject={setActiveObject}
+              onExportMap={() => setIsExportMapOpen(true)}
             />
           </div>
         </div>
       )}
+
+      <ExportMapModal 
+        isOpen={isExportMapOpen} 
+        onClose={() => setIsExportMapOpen(false)} 
+        setup={setup} 
+        cameras={cameras} 
+      />
 
       {/* Toolbar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-black/80 backdrop-blur-md rounded-lg border border-white/10 z-40">
@@ -1182,6 +1207,30 @@ export default function GaussianSplattingGuide() {
                   if (orbitRef.current) {
                     orbitRef.current.enabled = !e.value;
                   }
+                  
+                  // When scaling ends, commit the scale to the radius/spacing parameters
+                  if (!e.value && transformMode === 'scale' && trackRef.current) {
+                    const o = trackRef.current;
+                    const sx = o.scale.x;
+                    const sy = o.scale.y;
+                    const sz = o.scale.z;
+
+                    // Only apply if scale is significantly different from 1
+                    if (Math.abs(sx - 1) < 0.001 && Math.abs(sy - 1) < 0.001 && Math.abs(sz - 1) < 0.001) {
+                      return;
+                    }
+
+                    setSetup(prev => ({
+                      ...prev,
+                      radiusX: prev.radiusX * sx,
+                      radiusZ: prev.radiusZ * sz,
+                      layerSpacing: prev.layerSpacing * sy,
+                      trackScale: [1, 1, 1] // Reset scale state
+                    }));
+                    
+                    // Force reset the object scale immediately to prevent visual jump before React commit
+                    o.scale.set(1, 1, 1);
+                  }
                 }}
                 onObjectChange={(e: any) => {
                    if (!trackRef.current) return;
@@ -1207,7 +1256,7 @@ export default function GaussianSplattingGuide() {
                        ...prev,
                        trackPosition: newTrackPos,
                        trackRotation: [o.rotation.x, o.rotation.y, o.rotation.z],
-                       trackScale: [o.scale.x, o.scale.y, o.scale.z],
+                       trackScale: [o.scale.x, o.scale.y, o.scale.z], // Update scale during drag for visual feedback
                        subjectPosition: newSubjectPos
                      };
                    });

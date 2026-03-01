@@ -18,13 +18,65 @@ import * as THREE from 'three';
           lineWidth={2}
         />
 
-        {/* 3-Point Line (FIBA Standard: 6.75m radius, 0.9m from sideline) */}
+        {/* Free Throw Semi-Circle (R1800) */}
         <Line
           points={(() => {
-             const r = 6.75;
+            const r = 1.8;
+            const centerZ = -8.2;
+            const segments = 32;
+            const pts: [number, number, number][] = [];
+            for (let i = 0; i <= segments; i++) {
+              const angle = (i / segments) * Math.PI; // 0 to PI
+              pts.push([
+                Math.cos(angle) * r,
+                -0.49,
+                Math.sin(angle) * r + centerZ
+              ]);
+            }
+            return pts;
+          })()}
+          color={lineColor}
+          lineWidth={2}
+        />
+
+        {/* Restricted Area (R1300) */}
+        <Line
+          points={(() => {
+            const r = 1.3;
+            const hoopZ = -14 + 1.575;
+            const segments = 32;
+            const pts: [number, number, number][] = [];
+            // Semi-circle facing the court
+            for (let i = 0; i <= segments; i++) {
+              const angle = (i / segments) * Math.PI; // 0 to PI
+              pts.push([
+                Math.cos(angle) * r,
+                -0.49,
+                Math.sin(angle) * r + hoopZ
+              ]);
+            }
+            // Optional: Close the loop or add straight lines if strictly following FIBA/Drawing
+            // The drawing shows R1300 arc.
+            return pts;
+          })()}
+          color={lineColor}
+          lineWidth={2}
+        />
+
+        {/* 3-Point Line (R6700, 0.9m from sideline) */}
+        <Line
+          points={(() => {
+             const r = 6.7; // Updated from 6.75 to 6.7 based on drawing
              const hoopZ = -14 + 1.575;
              const cornerDist = 6.6; // 7.5m (half width) - 0.9m
+             // Calculate where the straight line meets the arc
+             // x = cornerDist
+             // x^2 + (z - hoopZ)^2 = r^2
+             // (z - hoopZ) = sqrt(r^2 - x^2)
              const cornerZOffset = Math.sqrt(r*r - cornerDist*cornerDist);
+             
+             // Calculate angle for the arc
+             // cos(theta) = x / r
              const startAngle = Math.acos(cornerDist / r);
              const endAngle = Math.PI - startAngle;
              
@@ -105,10 +157,15 @@ import * as THREE from 'three';
     );
   };
 
-export function BasketballCourt() {
-  const courtColor = '#E8A87C'; // Wood color
-  const lineColor = '#FFFFFF';
-  
+export function BasketballCourt({ 
+  courtColor = '#E8A87C', 
+  lineColor = '#FFFFFF',
+  floorOpacity = 1
+}: { 
+  courtColor?: string; 
+  lineColor?: string;
+  floorOpacity?: number;
+}) {
   // Full court dimensions: 28m x 15m
   // Rim height: 3.05m
   // Backboard offset from baseline: 1.2m
@@ -118,7 +175,7 @@ export function BasketballCourt() {
       {/* Floor (28m x 15m) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.51, 0]} receiveShadow>
         <planeGeometry args={[15, 28]} />
-        <meshStandardMaterial color={courtColor} roughness={0.5} metalness={0.1} />
+        <meshStandardMaterial color={courtColor} roughness={0.5} metalness={0.1} transparent opacity={floorOpacity} />
       </mesh>
 
       {/* Center Line */}
@@ -156,23 +213,29 @@ export function BasketballCourt() {
   );
 }
 
-export function BaseballField() {
-  const dirtColor = '#8B4513';
-  const grassColor = '#2F4F2F';
-  const chalkColor = '#FFFFFF';
-
+export function BaseballField({
+  dirtColor = '#8B4513',
+  grassColor = '#2F4F2F',
+  chalkColor = '#FFFFFF',
+  floorOpacity = 1
+}: {
+  dirtColor?: string;
+  grassColor?: string;
+  chalkColor?: string;
+  floorOpacity?: number;
+}) {
   return (
     <group>
       {/* Grass Field */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.52, 0]} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color={grassColor} roughness={0.8} />
+        <meshStandardMaterial color={grassColor} roughness={0.8} transparent opacity={floorOpacity} />
       </mesh>
 
       {/* Dirt Circle (Infield/Home plate area) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.51, 0]} receiveShadow>
         <circleGeometry args={[4, 32]} />
-        <meshStandardMaterial color={dirtColor} roughness={0.9} />
+        <meshStandardMaterial color={dirtColor} roughness={0.9} transparent opacity={floorOpacity} />
       </mesh>
 
       {/* Foul Lines */}
