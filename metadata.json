@@ -1,0 +1,5 @@
+{
+  "name": "Gaussian Splatting Guide",
+  "description": "Interactive guide for optimal camera placement in Gaussian Splatting workflows.",
+  "requestFramePermissions": []
+}
